@@ -263,7 +263,6 @@ public:
     [[nodiscard]] bool fileProviderDomainsAppSandboxMigrationCompleted() const;
     void setFileProviderDomainsAppSandboxMigrationCompleted(bool completed);
 
-    [[nodiscard]] static Migration &migration();
     [[nodiscard]] QStringList backupConfigFiles() const;
 
     /// App-level macOS File Provider mode: when enabled, every account gets a file
@@ -317,7 +316,6 @@ private:
     using SharedCreds = QSharedPointer<AbstractCredentials>;
 
     static QString _confDir;
-    static Migration _migration;
 };
 }
 #endif // CONFIGFILE_H
