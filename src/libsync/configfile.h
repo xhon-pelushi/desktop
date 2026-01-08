@@ -252,10 +252,6 @@ public:
     /// Add the system and user exclude file path to the ExcludedFiles instance.
     static void setupDefaultExcludeFilePaths(ExcludedFiles &excludedFiles);
 
-    /// Set during first time migration of legacy accounts in AccountManager
-    [[nodiscard]] static QString discoveredLegacyConfigPath();
-    static void setDiscoveredLegacyConfigPath(const QString &discoveredLegacyConfigPath);
-
     /// File Provider Domain UUID to Account ID mapping
 
     /**
@@ -266,7 +262,9 @@ public:
     /// File Provider app sandbox migration flag
     [[nodiscard]] bool fileProviderDomainsAppSandboxMigrationCompleted() const;
     void setFileProviderDomainsAppSandboxMigrationCompleted(bool completed);
+
     [[nodiscard]] static Migration &migration();
+    [[nodiscard]] QStringList backupConfigFiles() const;
 
     /// App-level macOS File Provider mode: when enabled, every account gets a file
     /// provider domain and classic sync folders are unavailable (the File Provider
@@ -319,7 +317,6 @@ private:
     using SharedCreds = QSharedPointer<AbstractCredentials>;
 
     static QString _confDir;
-    static QString _discoveredLegacyConfigPath;
     static Migration _migration;
 };
 }
