@@ -19,6 +19,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlComponent>
 #include <QLoggingCategory>
+#include <QMetaObject>
 #include <QQuickWindow>
 #include <QTimer>
 #include <QVariant>
@@ -36,14 +37,14 @@ BrowserReAuthWindow::BrowserReAuthWindow(Account *account, QObject *parent)
     connect(this, &BrowserReAuthWindow::credentialsReady, this, &BrowserReAuthWindow::close, Qt::QueuedConnection);
     connect(this, &BrowserReAuthWindow::cancelled, this, &BrowserReAuthWindow::close, Qt::QueuedConnection);
 
-    auto *const systray = Systray::instance();
+    const auto systray = Systray::instance();
     if (!systray) {
         qCWarning(lcBrowserReAuthWindow) << "Cannot start browser re-authentication without the system tray.";
         _loadFailed = true;
         return;
     }
 
-    auto *engine = systray->trayEngine();
+    const auto engine = systray->trayEngine();
     if (!engine) {
         qCWarning(lcBrowserReAuthWindow) << "Cannot start browser re-authentication without a QML engine.";
         _loadFailed = true;
@@ -51,9 +52,10 @@ BrowserReAuthWindow::BrowserReAuthWindow(Account *account, QObject *parent)
     }
 
     QQmlComponent component(engine, QStringLiteral("qrc:/qml/src/gui/wizard/qml/BrowserReAuthWindow.qml"));
-    QVariantMap initialProperties;
-    initialProperties.insert(QStringLiteral("controller"), QVariant::fromValue<QObject *>(_controller));
-    auto *createdObject = component.createWithInitialProperties(initialProperties);
+    const QVariantMap initialProperties {
+        {QStringLiteral("controller"), QVariant::fromValue<QObject *>(_controller)},
+    };
+    const auto createdObject = component.createWithInitialProperties(initialProperties);
 
     if (component.isError()) {
         qCWarning(lcBrowserReAuthWindow) << "Failed to load QML browser re-authentication window:" << component.errors();
@@ -108,9 +110,9 @@ void BrowserReAuthWindow::setInfoText(const QString &infoText)
 void BrowserReAuthWindow::show()
 {
     if (_loadFailed || !_window) {
-        QTimer::singleShot(0, this, [this] {
+        QMetaObject::invokeMethod(this, [this] {
             emit cancelled();
-        });
+        }, Qt::QueuedConnection);
         return;
     }
 

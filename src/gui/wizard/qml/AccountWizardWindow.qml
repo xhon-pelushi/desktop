@@ -19,6 +19,7 @@ WizardStyledWindow {
     readonly property int compactHeight: Style.accountWizardCompactHeight
     readonly property int syncOptionsHeight: Style.accountWizardSyncOptionsHeight
 
+    minimizable: true
     width: Style.accountWizardWindowWidth
     height: compactHeight
     minimumWidth: Style.accountWizardWindowWidth

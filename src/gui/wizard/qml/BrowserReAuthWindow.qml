@@ -14,6 +14,7 @@ WizardStyledWindow {
 
     required property QtObject controller
 
+    minimizable: true
     width: Style.accountWizardWindowWidth
     height: Style.accountWizardCompactHeight
     minimumWidth: Style.accountWizardWindowWidth
@@ -42,8 +43,9 @@ WizardStyledWindow {
             }
         ]
 
-        BrowserReAuthPage {
+        BrowserAuthPage {
             controller: root.controller
+            descriptionText: root.controller.infoText
             anchors.fill: parent
         }
     }

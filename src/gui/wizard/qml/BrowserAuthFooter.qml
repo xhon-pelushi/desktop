@@ -13,12 +13,12 @@ RowLayout {
     required property QtObject controller
 
     spacing: Style.wizardFooterSpacing
+    uniformCellSizes: true
 
     WizardButton {
         enabled: !root.controller.busy
         text: qsTranslate("AccountWizardWindow", "Cancel")
         Layout.fillWidth: true
-        Layout.preferredWidth: 1
         onClicked: root.controller.cancel()
     }
 
@@ -28,7 +28,6 @@ RowLayout {
         iconSource: "image://svgimage-custom-color/copy.svg/" + Style.wizardPrimaryText
         iconBeforeText: true
         Layout.fillWidth: true
-        Layout.preferredWidth: 1
         onClicked: root.controller.copyLoginLink()
     }
 
@@ -38,7 +37,6 @@ RowLayout {
         text: qsTranslate("AccountWizardWindow", "Open")
         textSuffix: "\u2197"
         Layout.fillWidth: true
-        Layout.preferredWidth: 1
         onClicked: root.controller.openBrowserLogin()
     }
 }

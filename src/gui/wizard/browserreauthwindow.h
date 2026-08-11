@@ -22,8 +22,8 @@ class BrowserReAuthController;
 /**
  * @brief Hosts the QML browser re-authentication window.
  *
- * The window presents BrowserReAuthPage and returns replacement credentials
- * for the existing account through BrowserReAuthController.
+ * The window presents browser authentication and returns replacement
+ * credentials for the existing account through BrowserReAuthController.
  */
 class BrowserReAuthWindow : public QObject
 {
