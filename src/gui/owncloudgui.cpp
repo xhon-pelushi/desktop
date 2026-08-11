@@ -25,6 +25,8 @@
 #include "theme.h"
 #include "wheelhandler.h"
 #include "syncconflictsmodel.h"
+#include "conflictdialog.h"
+#include "conflictsolver.h"
 #include "syncengine.h"
 #include "wizard/accountwizardcontroller.h"
 #include "filedetails/datefieldbackend.h"
@@ -34,6 +36,7 @@
 #include "filedetails/sortedsharemodel.h"
 #include "activity/sortedactivitylistmodel.h"
 #include "activity/syncstatussummary.h"
+#include "tray/trayactivationpolicy.h"
 #include "tray/trayaccountappsmodel.h"
 #include "search/unifiedsearchresultslistmodel.h"
 #include "integration/fileactionsmodel.h"
@@ -43,6 +46,7 @@
 #include "governance/getgovernancelabels.h"
 #include "governance/governancelabelslistmodel.h"
 #include "filesystem.h"
+#include "common/utility_mac_sandbox.h"
 
 #ifdef WITH_LIBCLOUDPROVIDERS
 #include "cloudproviders/cloudprovidermanager.h"
@@ -51,6 +55,7 @@
 #include <QClipboard>
 #include <QDesktopServices>
 #include <QDir>
+#include <QFileDialog>
 #include <QGuiApplication>
 #include <QMessageBox>
 #include <QQmlApplicationEngine>
@@ -244,7 +249,7 @@ void ownCloudGui::slotTrayClicked(QSystemTrayIcon::ActivationReason reason)
     const auto currentUser = UserModel::instance()->currentUser();
     if (reason == QSystemTrayIcon::DoubleClick && currentUser && currentUser->hasLocalFolder()) {
         currentUser->openLocalFolder();
-    } else if (reason == QSystemTrayIcon::Trigger) {
+    } else if (TrayActivationPolicy::opensPrimaryPopup(reason)) {
         if (AccountManager::instance()->accounts().isEmpty()) {
             // Without a configured account the tray icon drives the setup wizard
             // directly: open it, or bring the existing one back to front instead
@@ -803,6 +808,52 @@ void ownCloudGui::slotShowFileActivityDialog(const QString &localPath) const
 void ownCloudGui::slotShowFileActionsDialog(const QString &localPath) const
 {
     _tray->showFileActionsDialog(localPath);
+}
+
+void ownCloudGui::slotResolveConflict(const QString &conflictedPath, const QString &basePath, const QString &baseName, const QString &folderAlias) const
+{
+    // Show with open(), never exec(): this runs inside SocketApi::slotReadSocket and a modal loop would crash on a nullptr socket.
+    auto dialog = new ConflictDialog;
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setBaseFilename(baseName);
+    dialog->setLocalVersionFilename(conflictedPath);
+    dialog->setRemoteVersionFilename(basePath);
+    connect(dialog, &ConflictDialog::accepted, dialog, [folderAlias] {
+        if (const auto folder = FolderMan::instance()->folder(folderAlias)) {
+            folder->scheduleThisFolderSoon();
+        }
+    });
+    dialog->open();
+    raiseDialog(dialog);
+}
+
+void ownCloudGui::slotMoveItem(const QString &localPath, const QString &defaultTarget) const
+{
+    // Show with open(), never exec(): this runs inside SocketApi::slotReadSocket and a modal loop would crash on a freed socket.
+    auto dialog = new QFileDialog(nullptr, tr("Select new location …"), QFileInfo(defaultTarget).absolutePath());
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setAcceptMode(QFileDialog::AcceptSave);
+    dialog->setOptions(QFileDialog::HideNameFilterDetails);
+    dialog->selectUrl(QUrl::fromLocalFile(defaultTarget));
+    connect(dialog, &QFileDialog::urlSelected, dialog, [localPath](const QUrl &targetUrl) {
+        if (targetUrl.isEmpty()) {
+            return;
+        }
+
+#ifdef Q_OS_MACOS
+        const auto scopedAccess = Utility::MacSandboxSecurityScopedAccess::create(targetUrl);
+        if (!scopedAccess->isValid()) {
+            qCWarning(lcOwnCloudGui) << "Could not access resource for conflict resolution:" << targetUrl;
+            return;
+        }
+#endif
+
+        ConflictSolver solver;
+        solver.setLocalVersionFilename(localPath);
+        solver.setRemoteVersionFilename(targetUrl.toLocalFile());
+    });
+    dialog->open();
+    raiseDialog(dialog);
 }
 
 #ifdef BUILD_FILE_PROVIDER_MODULE
