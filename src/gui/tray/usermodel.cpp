@@ -4,6 +4,7 @@
  */
 
 #include "activity/notificationhandler.h"
+#include "trayaccountmenupolicy.h"
 #include "usermodel.h"
 #include "common/filesystembase.h"
 
@@ -944,7 +945,7 @@ void User::slotFileProviderInsufficientQuotaForItem(const QString &domainIdentif
     // user-visible refusal can produce many `reportInsufficientQuotaForItem` calls. Dedupe
     // per (domain, relativePath) so the activity list shows one row per affected file rather
     // than one per retry. See https://github.com/nextcloud/desktop/issues/9598.
-    const auto dedupKey = domainIdentifier + QLatin1Char('|') + relativePath;
+    const QString dedupKey = domainIdentifier + QLatin1Char('|') + relativePath;
     if (_reportedQuotaItems.contains(dedupKey)) {
         qCDebug(lcActivity) << "Suppressing duplicate quota-item entry for" << relativePath << "in domain" << domainIdentifier;
         return;
@@ -1042,7 +1043,7 @@ void User::slotFileProviderRetryUploads(const QString &domainIdentifier)
     // Re-arm dedupe so the next quota event for this domain produces a fresh summary entry
     // and fresh per-item entries (one per affected file, not one per retry).
     _reportedQuotaSummaryDomains.remove(domainIdentifier);
-    const auto domainPrefix = domainIdentifier + QLatin1Char('|');
+    const QString domainPrefix = domainIdentifier + QLatin1Char('|');
     QMutableSetIterator<QString> it(_reportedQuotaItems);
     while (it.hasNext()) {
         if (it.next().startsWith(domainPrefix)) {
@@ -1805,8 +1806,21 @@ void User::openFolderLocallyOrInBrowser(const QString &fullRemotePath)
 
 void User::login() const
 {
-    _account->account()->resetRejectedCertificates();
-    _account->signIn();
+    switch (TrayAccountMenuPolicy::reconnectMode(
+        _account->isConnected(),
+        _account->isSignedOut(),
+        !isPublicShareLink())) {
+    case TrayAccountMenuPolicy::ReconnectMode::None:
+        return;
+    case TrayAccountMenuPolicy::ReconnectMode::SignIn:
+        _account->account()->resetRejectedCertificates();
+        _account->signIn();
+        break;
+    case TrayAccountMenuPolicy::ReconnectMode::RetryConnection:
+        _account->account()->resetRejectedCertificates();
+        _account->freshConnectionAttempt();
+        break;
+    }
 }
 
 void User::logout() const

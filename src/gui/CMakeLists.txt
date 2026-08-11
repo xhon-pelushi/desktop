@@ -85,6 +85,7 @@ set(client_SRCS
     conflictsolver.cpp
     connectionvalidator.h
     connectionvalidator.cpp
+    localnetworkpermission.h
     editlocallyjob.h
     editlocallyjob.cpp
     editlocallymanager.h
@@ -238,6 +239,8 @@ set(client_SRCS
     activity/activitylistmodel.cpp
     tray/asyncimageresponse.cpp
     tray/trayimageprovider.cpp
+    tray/trayaccountmenupolicy.h
+    tray/trayactivationpolicy.h
     tray/trayaccountappsmodel.h
     tray/trayaccountappsmodel.cpp
     tray/usermodel.h
@@ -290,6 +293,8 @@ IF( APPLE )
     list(APPEND client_SRCS systray_mac_common.mm)
     list(APPEND client_SRCS notificationsoundplayer_mac.mm)
     list(APPEND client_SRCS
+        macOS/localnetworkpermission.mm)
+    list(APPEND client_SRCS
         # macOS tray account popup: one type per header/implementation pair.
         # Shared foundation first, then the base hover view, rows, popups and the
         # public entry point (OCC::showMacOSTrayPopup / hideMacOSTrayPopup).
@@ -331,6 +336,12 @@ IF( APPLE )
     list(APPEND client_SRCS
         ../../shell_integration/MacOSX/NextcloudIntegration/FinderSyncExt/Services/FinderSyncProtocol.h
         ../../shell_integration/MacOSX/NextcloudIntegration/FinderSyncExt/Services/FinderSyncAppProtocol.h
+        ../../shell_integration/MacOSX/NextcloudIntegration/FinderSyncExt/Services/FinderSyncBrokerProtocol.h
+        ../../shell_integration/MacOSX/NextcloudIntegration/FinderSyncExt/Services/FinderSyncBrokerClientProtocol.h
+        macOS/findersyncbrokeridentity.h
+        macOS/findersyncbrokeridentity.cpp
+        macOS/findersyncbrokerregistrar.h
+        macOS/findersyncbrokerregistrar_mac.mm
         macOS/findersyncxpc.h
         macOS/findersyncxpc_mac.mm
         macOS/findersyncservice.h
@@ -386,7 +397,7 @@ IF( APPLE )
     endif()
 ENDIF()
 IF( NOT APPLE )
-    list(APPEND client_SRCS trayaccountpopup_qt.cpp)
+    list(APPEND client_SRCS trayaccountpopup_qt.cpp localnetworkpermission.cpp)
 ENDIF()
 
 IF( NOT WIN32 AND NOT APPLE )
@@ -743,7 +754,10 @@ if (APPLE)
     else()
         target_link_libraries(nextcloudCore PUBLIC "-framework UserNotifications")
     endif()
-    target_link_libraries(nextcloudCore PRIVATE "-framework AVFoundation" "-framework Foundation")
+    target_link_libraries(nextcloudCore PRIVATE "-framework AVFoundation" "-framework Foundation" "-framework Network")
+    # ServiceManagement for SMAppService, used to register the FinderSync broker login item.
+    # src/csync links it too, for utility_mac.mm, but PRIVATE — so it does not propagate here.
+    target_link_libraries(nextcloudCore PRIVATE "-framework ServiceManagement")
     target_compile_definitions(nextcloudCore PRIVATE NEXTCLOUD_HAS_NATIVE_SOUND_BACKEND)
 endif()
 
